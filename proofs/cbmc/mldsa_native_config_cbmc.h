@@ -25,11 +25,14 @@
  */
 
 /*
- * Test configuration: mldsa-native configuration used for CBMC proofs
+ * Test configuration: mldsa-native configuration used for CBMC proofs, using
+ * instrumented alloc/free
  *
  * This configuration differs from the default mldsa/mldsa_native_config.h in
  * the following places:
  *   - MLD_CONFIG_NAMESPACE_PREFIX
+ *   - MLD_CONFIG_KEYGEN_PCT
+ *   - MLD_CONFIG_CUSTOM_ALLOC_FREE
  */
 
 
@@ -541,15 +544,13 @@
  *              code will handle this case and invoke MLD_CUSTOM_FREE.
  *
  *****************************************************************************/
-/* #define MLD_CONFIG_CUSTOM_ALLOC_FREE
-   #if !defined(__ASSEMBLER__)
-   #include <stdlib.h>
-   #define MLD_CUSTOM_ALLOC(v, T, N)                              \
-     T* (v) = (T *)aligned_alloc(MLD_DEFAULT_ALIGN,               \
-                                 MLD_ALIGN_UP(sizeof(T) * (N)))
-   #define MLD_CUSTOM_FREE(v, T, N) free(v)
-   #endif
-*/
+#define MLD_CONFIG_CUSTOM_ALLOC_FREE
+#if !defined(__ASSEMBLER__)
+#include <stdlib.h>
+#define MLD_CUSTOM_ALLOC(v, T, N) T *v = (T *)malloc(sizeof(T) * (N))
+#define MLD_CUSTOM_FREE(v, T, N) free(v)
+#endif
+
 
 /******************************************************************************
  * Name:        MLD_CONFIG_CUSTOM_MEMCPY
@@ -678,7 +679,7 @@
  *              requires crypto_sign_signature() and crypto_sign_verify().
  *
  *****************************************************************************/
-/* #define MLD_CONFIG_KEYGEN_PCT */
+#define MLD_CONFIG_KEYGEN_PCT
 
 /******************************************************************************
  * Name:        MLD_CONFIG_KEYGEN_PCT_BREAKAGE_TEST
