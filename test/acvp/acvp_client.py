@@ -177,35 +177,76 @@ def run_keyGen_test(tg, tc):
     return results
 
 
-def compute_hash(msg, alg):
-    msg_bytes = bytes.fromhex(msg)
+# ACVP hashAlg -> (hashlib name, XOF output length in bytes or None).
+HASH_ALG_TO_HASHLIB = {
+    "SHA2-224": ("sha224", None),
+    "SHA2-256": ("sha256", None),
+    "SHA2-384": ("sha384", None),
+    "SHA2-512": ("sha512", None),
+    "SHA2-512/224": ("sha512_224", None),
+    "SHA2-512/256": ("sha512_256", None),
+    "SHA3-224": ("sha3_224", None),
+    "SHA3-256": ("sha3_256", None),
+    "SHA3-384": ("sha3_384", None),
+    "SHA3-512": ("sha3_512", None),
+    "SHAKE-128": ("shake_128", 32),
+    "SHAKE-256": ("shake_256", 64),
+}
 
-    if alg == "SHA2-224":
-        return hashlib.sha224(msg_bytes).hexdigest()
-    elif alg == "SHA2-256":
-        return hashlib.sha256(msg_bytes).hexdigest()
-    elif alg == "SHA2-384":
-        return hashlib.sha384(msg_bytes).hexdigest()
-    elif alg == "SHA2-512":
-        return hashlib.sha512(msg_bytes).hexdigest()
-    elif alg == "SHA2-512/224":
-        return hashlib.new("sha512_224", msg_bytes).hexdigest()
-    elif alg == "SHA2-512/256":
-        return hashlib.new("sha512_256", msg_bytes).hexdigest()
-    elif alg == "SHA3-224":
-        return hashlib.sha3_224(msg_bytes).hexdigest()
-    elif alg == "SHA3-256":
-        return hashlib.sha3_256(msg_bytes).hexdigest()
-    elif alg == "SHA3-384":
-        return hashlib.sha3_384(msg_bytes).hexdigest()
-    elif alg == "SHA3-512":
-        return hashlib.sha3_512(msg_bytes).hexdigest()
-    elif alg == "SHAKE-128":
-        return hashlib.shake_128(msg_bytes).hexdigest(32)
-    elif alg == "SHAKE-256":
-        return hashlib.shake_256(msg_bytes).hexdigest(64)
-    else:
+
+def compute_hash(msg, alg):
+    if alg not in HASH_ALG_TO_HASHLIB:
         raise ValueError(f"Unsupported hash algorithm: {alg}")
+    name, xof_len = HASH_ALG_TO_HASHLIB[alg]
+    h = hashlib.new(name, bytes.fromhex(msg))
+    return h.hexdigest() if xof_len is None else h.hexdigest(xof_len)
+
+
+def hashlib_can_compute(hashAlg):
+    # SHAKE-256 pre-hash is computed inside the ACVP binary, not via hashlib.
+    if hashAlg in (None, "none", "SHAKE-256"):
+        return True
+    name, _ = HASH_ALG_TO_HASHLIB.get(hashAlg, (None, None))
+    if name is None:
+        return False
+    try:
+        hashlib.new(name)
+        return True
+    except (ValueError, TypeError):
+        return False
+
+
+def unwrap_acvts(data):
+    # ACVTS files wrap the payload as [{"acvVersion": ...}, {...}].
+    return data[1] if isinstance(data, list) else data
+
+
+def unsupported_test_cases(acvp_data):
+    # Return {(tgId, tcId)} for pre-hash cases whose hashAlg this platform
+    # cannot compute, plus the set of offending hashAlgs.
+    cases, algs = set(), set()
+    for _, promptData, _, _ in acvp_data:
+        for tg in unwrap_acvts(promptData).get("testGroups", []):
+            if tg.get("preHash") != "preHash":
+                continue
+            for tc in tg.get("tests", []):
+                if not hashlib_can_compute(tc.get("hashAlg")):
+                    cases.add((tg["tgId"], tc["tcId"]))
+                    algs.add(tc["hashAlg"])
+    return cases, algs
+
+
+def filter_test_cases(acvp_data, drop):
+    # Remove the given (tgId, tcId) cases from both prompt and expected
+    # results so the result comparison stays consistent.
+    for _, promptData, _, expectedData in acvp_data:
+        for data in (promptData, expectedData):
+            if data is None:
+                continue
+            for tg in unwrap_acvts(data).get("testGroups", []):
+                tg["tests"] = [
+                    tc for tc in tg["tests"] if (tg["tgId"], tc["tcId"]) not in drop
+                ]
 
 
 def run_sigGen_test(tg, tc):
@@ -449,7 +490,9 @@ def runTest(data, output):
     info("ALL GOOD!")
 
 
-def test(prompt, expected, output, version, supported_modes=None):
+def test(
+    prompt, expected, output, version, supported_modes=None, skip_unsupported=False
+):
     assert prompt is not None or output is None, (
         "cannot produce output if there is no input"
     )
@@ -468,6 +511,22 @@ def test(prompt, expected, output, version, supported_modes=None):
     if len(data) == 0:
         info("No test data to run (all modes disabled in this build)")
         return
+
+    drop, algs = unsupported_test_cases(data)
+    if drop:
+        algs = ", ".join(sorted(algs))
+        if not skip_unsupported:
+            err(
+                f"Error: test data uses hash algorithm(s) unavailable in this "
+                f"Python's hashlib: {algs}."
+            )
+            err("Re-run with --skip-unsupported to skip the affected test cases.")
+            exit(1)
+        info(
+            f"Skipping {len(drop)} test case(s) using unsupported hash "
+            f"algorithm(s): {algs}"
+        )
+        filter_test_cases(data, drop)
 
     runTest(data, output)
 
@@ -512,6 +571,12 @@ parser.add_argument(
     default=True,
     help="Auto-detect supported modes by running acvp_mldsa44 --info (default: True)",
 )
+parser.add_argument(
+    "--skip-unsupported",
+    action="store_true",
+    help="Skip test cases whose hash algorithm is unavailable in this Python's "
+    "hashlib (e.g. SHA2-512/224, SHA2-512/256) instead of failing",
+)
 args = parser.parse_args()
 
 # Determine supported modes
@@ -537,4 +602,11 @@ if args.prompt is None:
         print("Failed to download ACVP test files", file=sys.stderr)
         sys.exit(1)
 
-test(args.prompt, args.expected, args.output, args.version, supported_modes)
+test(
+    args.prompt,
+    args.expected,
+    args.output,
+    args.version,
+    supported_modes,
+    args.skip_unsupported,
+)
