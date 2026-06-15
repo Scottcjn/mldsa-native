@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "hol-light": {
+      "command": "uv",
+      "args": ["run", "--directory", "/home/ubuntu/rej-uniform/hol-light/mcp", "hol-light-mcp",
+               "--config", "/home/ubuntu/rej-uniform/hol-light/hol-mcp-mldsa.toml"],
+      "env": {
+        "PATH": "/home/ubuntu/.local/bin:/usr/local/bin:/usr/bin:/bin",
+        "LD_LIBRARY_PATH": "/home/ubuntu/.local/lib"
+      }
+    }
+  }
+}

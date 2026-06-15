@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__hol-light__hol_status",
+      "mcp__hol-light__search_theorems",
+      "mcp__hol-light__goal_state",
+      "mcp__hol-light__hol_interrupt"
+    ]
+  }
+}
