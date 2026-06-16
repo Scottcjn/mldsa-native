@@ -106,7 +106,8 @@ static MLD_INLINE int mld_rej_uniform_eta2_native(int32_t *r, unsigned len,
    * We declassify prior the input data and mark the outputs as secret.
    */
   MLD_CT_TESTING_DECLASSIFY(buf, buflen);
-  outlen = mld_rej_uniform_eta2_avx2(r, buf);
+  outlen = mld_rej_uniform_eta2_avx2_asm(
+      r, buf, (const uint8_t *)mld_rej_uniform_table);
   MLD_CT_TESTING_SECRET(r, sizeof(int32_t) * outlen);
   /* Safety: outlen is at most MLDSA_N and, hence, this cast is safe. */
   return (int)outlen;
@@ -135,7 +136,8 @@ static MLD_INLINE int mld_rej_uniform_eta4_native(int32_t *r, unsigned len,
    * We declassify prior the input data and mark the outputs as secret.
    */
   MLD_CT_TESTING_DECLASSIFY(buf, buflen);
-  outlen = mld_rej_uniform_eta4_avx2(r, buf);
+  outlen = mld_rej_uniform_eta4_avx2_asm(
+      r, buf, (const uint8_t *)mld_rej_uniform_table);
   MLD_CT_TESTING_SECRET(r, sizeof(int32_t) * outlen);
   /* Safety: outlen is at most MLDSA_N and, hence, this cast is safe. */
   return (int)outlen;

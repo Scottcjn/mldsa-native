@@ -40,9 +40,9 @@ OBJDUMP=$(CROSS_PREFIX)objdump -d
 # by single-quote characters in comments, so we eliminate // comments first.
 
 ifeq ($(OSTYPE_RESULT),Darwin)
-PREPROCESS=sed -e 's/\/\/.*//' | $(CC) -E -xassembler-with-cpp -
+PREPROCESS=sed -e 's/\/\/.*//' | $(CC) -E -xassembler-with-cpp -I$(BASE)/../../../mldsa -I$(BASE)/../../../mldsa/src -I$(BASE)/../../../common -DMLD_CONFIG_PARAMETER_SET=65 -
 else
-PREPROCESS=$(CC) -E -xassembler-with-cpp -
+PREPROCESS=$(CC) -E -xassembler-with-cpp -I$(BASE)/../../../mldsa -I$(BASE)/../../../mldsa/src -I$(BASE)/../../../common -DMLD_CONFIG_PARAMETER_SET=65 -
 endif
 
 # Generally GNU-type assemblers are happy with multiple instructions on
@@ -61,7 +61,9 @@ OBJ = mldsa/ntt_avx2_asm.o \
       mldsa/pointwise_acc_l4_avx2_asm.o \
       mldsa/pointwise_acc_l5_avx2_asm.o \
       mldsa/pointwise_acc_l7_avx2_asm.o \
-      mldsa/keccak_f1600_x4_avx2_asm.o
+      mldsa/keccak_f1600_x4_avx2_asm.o \
+      mldsa/rej_uniform_eta4_avx2_asm.o \
+      mldsa/rej_uniform_eta2_avx2_asm.o
 
 # Build object files from assembly sources
 $(OBJ): %.o : %.S
