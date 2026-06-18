@@ -71,6 +71,7 @@ static int cmp_uint64_t(const void *a, const void *b)
 static int bench(void)
 {
   MLD_ALIGN int32_t data0[256];
+  MLD_ALIGN int32_t data1[256];
   MLD_ALIGN mld_poly poly_out;
   MLD_ALIGN mld_polyvecl polyvecl_a, polyvecl_b;
   MLD_ALIGN mld_polymat polymat;
@@ -101,6 +102,9 @@ static int bench(void)
   BENCH("poly_chknorm",
         chknorm_acc ^=
         mld_poly_chknorm((const mld_poly *)data0, MLDSA_GAMMA1 - MLDSA_BETA);)
+
+  BENCH("poly_use_hint",
+        mld_poly_use_hint((mld_poly *)data0, (mld_poly *)data1));
 
   return (int)chknorm_acc;
 }

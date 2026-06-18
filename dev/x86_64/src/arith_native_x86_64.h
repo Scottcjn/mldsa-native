@@ -115,11 +115,33 @@ __contract__(
 );
 
 #if !defined(MLD_CONFIG_NO_VERIFY_API)
-#define mld_poly_use_hint_32_avx2 MLD_NAMESPACE(mld_poly_use_hint_32_avx2)
-void mld_poly_use_hint_32_avx2(int32_t *a, const int32_t *h);
+#define mld_poly_use_hint_32_avx2_asm MLD_NAMESPACE(poly_use_hint_32_avx2_asm)
+MLD_SYSV_ABI
+void mld_poly_use_hint_32_avx2_asm(int32_t *a, const int32_t *h)
+/* This must be kept in sync with the HOL-Light specification
+ * in proofs/hol_light/x86_64/proofs/poly_use_hint_32_avx2_asm.ml */
+__contract__(
+  requires(memory_no_alias(a, sizeof(int32_t) * MLDSA_N))
+  requires(memory_no_alias(h, sizeof(int32_t) * MLDSA_N))
+  requires(array_bound(a, 0, MLDSA_N, 0, MLDSA_Q))
+  requires(array_bound(h, 0, MLDSA_N, 0, 2))
+  assigns(memory_slice(a, sizeof(int32_t) * MLDSA_N))
+  ensures(array_bound(a, 0, MLDSA_N, 0, (MLDSA_Q - 1) / (2 * MLDSA_GAMMA2)))
+);
 
-#define mld_poly_use_hint_88_avx2 MLD_NAMESPACE(mld_poly_use_hint_88_avx2)
-void mld_poly_use_hint_88_avx2(int32_t *a, const int32_t *h);
+#define mld_poly_use_hint_88_avx2_asm MLD_NAMESPACE(poly_use_hint_88_avx2_asm)
+MLD_SYSV_ABI
+void mld_poly_use_hint_88_avx2_asm(int32_t *a, const int32_t *h)
+/* This must be kept in sync with the HOL-Light specification
+ * in proofs/hol_light/x86_64/proofs/poly_use_hint_88_avx2_asm.ml */
+__contract__(
+  requires(memory_no_alias(a, sizeof(int32_t) * MLDSA_N))
+  requires(memory_no_alias(h, sizeof(int32_t) * MLDSA_N))
+  requires(array_bound(a, 0, MLDSA_N, 0, MLDSA_Q))
+  requires(array_bound(h, 0, MLDSA_N, 0, 2))
+  assigns(memory_slice(a, sizeof(int32_t) * MLDSA_N))
+  ensures(array_bound(a, 0, MLDSA_N, 0, (MLDSA_Q - 1) / (2 * MLDSA_GAMMA2)))
+);
 #endif /* !MLD_CONFIG_NO_VERIFY_API */
 
 #define mld_poly_chknorm_avx2_asm MLD_NAMESPACE(poly_chknorm_avx2_asm)
